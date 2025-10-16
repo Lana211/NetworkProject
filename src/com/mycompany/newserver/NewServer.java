@@ -110,54 +110,100 @@ class NewClient implements Runnable {
     }
 
     private void handleGetAvailableSlots(String request) {
-        String[] parts = request.split(" ");
-        if (parts.length >= 3) {
-            String service = parts[1];
-            String date = parts[2];
+    // Fix: Handle dates with spaces properly
+    String[] parts = request.split(" ", 3); // Split into max 3 parts
+    if (parts.length >= 3) {
+        String service = parts[1];
+        String date = parts[2]; // The rest is the date
+        
+        // Available times for each service
+        Map<String, String[]> serviceSlots = new HashMap<>();
+        serviceSlots.put("Massage", new String[]{"9:00 AM", "10:00 AM", "11:00 AM", "2:00 PM", "3:00 PM", "4:00 PM"});
+        serviceSlots.put("Facial", new String[]{"10:00 AM", "11:00 AM", "2:00 PM", "3:00 PM", "4:00 PM"});
+        serviceSlots.put("Sauna", new String[]{"9:00 AM", "10:00 AM", "11:00 AM", "2:00 PM", "3:00 PM", "4:00 PM", "5:00 PM"});
+        serviceSlots.put("Yoga", new String[]{"8:00 AM", "9:00 AM", "4:00 PM", "5:00 PM"});
+        
+        String[] allSlots = serviceSlots.getOrDefault(service, new String[]{});
+        List<String> availableSlots = new ArrayList<>();
+        
+        // Filter out booked slots
+        for (String time : allSlots) {
+            String slotKey = service + "_" + date + "_" + time;
             
-            // الأوقات المتاحة لكل خدمة
-            Map<String, String[]> serviceSlots = new HashMap<>();
-            serviceSlots.put("Massage", new String[]{"9:00 AM", "10:00 AM", "11:00 AM", "2:00 PM", "3:00 PM", "4:00 PM"});
-            serviceSlots.put("Facial", new String[]{"10:00 AM", "11:00 AM", "2:00 PM", "3:00 PM", "4:00 PM"});
-            serviceSlots.put("Sauna", new String[]{"9:00 AM", "10:00 AM", "11:00 AM", "2:00 PM", "3:00 PM", "4:00 PM", "5:00 PM"});
-            serviceSlots.put("Yoga", new String[]{"8:00 AM", "9:00 AM", "4:00 PM", "5:00 PM"});
+            // DEBUG: Check each slot
+            boolean isBooked = reservations.containsKey(slotKey);
+            System.out.println("Checking slot: " + slotKey + " -> Booked: " + isBooked);
             
-            String[] allSlots = serviceSlots.getOrDefault(service, new String[]{});
-            List<String> availableSlots = new ArrayList<>();
-            
-            // فلترة الأوقات المحجوزة فقط
-            for (String time : allSlots) {
-                String slotKey = service + "_" + date + "_" + time;
-                if (!reservations.containsKey(slotKey)) {
-                    availableSlots.add(time);
-                }
+            if (!isBooked) {
+                availableSlots.add(time);
             }
-            
+        }
+        
+        // Debug output
+        System.out.println("=== FINAL AVAILABLE SLOTS ===");
+        System.out.println("Service: " + service + ", Date: " + date);
+        System.out.println("Available: " + availableSlots);
+        System.out.println("All Reservations: " + reservations);
+        System.out.println("=============================");
+        
+        if (availableSlots.isEmpty()) {
+            out.println("AVAILABLE_SLOTS ");
+        } else {
             out.println("AVAILABLE_SLOTS " + String.join(",", availableSlots));
         }
     }
+}
 
-    private void handleReserve(String request) {
-        if (currentUser == null) {
-            out.println("RESERVE_FAILED Please login first");
-            return;
-        }
-        
-        String[] parts = request.split(" ", 4);
-        if (parts.length >= 4) {
-            String service = parts[1];
-            String date = parts[2];
-            String time = parts[3];
-            String slotKey = service + "_" + date + "_" + time;
-            
-            if (!reservations.containsKey(slotKey)) {
-                reservations.put(slotKey, currentUser);
-                String booking = service + " on " + date + " at " + time;
-                userBookings.get(currentUser).add(booking);
-                out.println("RESERVE_CONFIRMED " + booking);
-            } else {
-                out.println("RESERVE_FAILED " + time + " is already booked for " + service);
-            }
-        }
+private void handleReserve(String request) {
+    if (currentUser == null) {
+        out.println("RESERVE_FAILED Please login first");
+        return;
     }
+    
+    // Fix: Use proper parsing for dates with spaces
+    String[] parts = request.split(" ", 4); // Split into max 4 parts
+    if (parts.length >= 4) {
+        String service = parts[1];
+        // The date is everything after service until the last space before time
+        String dateAndTime = parts[2] + " " + parts[3];
+        String[] dateTimeParts = dateAndTime.split(" ");
+        
+        // Reconstruct date (all parts except the last 2 which are time)
+        StringBuilder dateBuilder = new StringBuilder();
+        for (int i = 0; i < dateTimeParts.length - 2; i++) {
+            if (i > 0) dateBuilder.append(" ");
+            dateBuilder.append(dateTimeParts[i]);
+        }
+        String date = dateBuilder.toString();
+        
+        // Time is the last 2 parts
+        String time = dateTimeParts[dateTimeParts.length - 2] + " " + dateTimeParts[dateTimeParts.length - 1];
+        
+        String slotKey = service + "_" + date + "_" + time;
+        
+        // DEBUG: Before reservation
+        System.out.println("=== BEFORE RESERVATION ===");
+        System.out.println("Attempting to reserve: " + slotKey);
+        System.out.println("Current reservations: " + reservations);
+        
+        if (!reservations.containsKey(slotKey)) {
+            reservations.put(slotKey, currentUser);
+            String booking = service + " on " + date + " at " + time;
+            userBookings.get(currentUser).add(booking);
+            out.println("RESERVE_CONFIRMED " + booking);
+            
+            // Debug output
+            System.out.println("=== AFTER RESERVATION ===");
+            System.out.println("Successfully reserved: " + slotKey + " for user: " + currentUser);
+            System.out.println("Updated reservations: " + reservations);
+            System.out.println("=========================");
+        } else {
+            out.println("RESERVE_FAILED " + time + " is already booked for " + service);
+            System.out.println("RESERVATION FAILED - Already booked: " + slotKey);
+        }
+    } else {
+        out.println("RESERVE_FAILED Invalid command format");
+    }
+
+}
 }
