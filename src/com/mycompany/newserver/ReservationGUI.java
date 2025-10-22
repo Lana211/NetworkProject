@@ -1,5 +1,9 @@
 package com.mycompany.newserver;
 
+
+
+
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -12,7 +16,7 @@ public class ReservationGUI extends JFrame {
     
     private JTextField usernameField, loginUsernameField;
     private JPasswordField passwordField, loginPasswordField;
-    private JComboBox<String> serviceComboBox, dateComboBox, timeComboBox;
+    private JComboBox<String> serviceComboBox, dateComboBox, timeComboBox, therapistComboBox;
     
     private PrintWriter out;
     private BufferedReader in;
@@ -21,7 +25,7 @@ public class ReservationGUI extends JFrame {
 
     public ReservationGUI() {
         setTitle("Spa & Wellness Reservation System");
-        setSize(500, 400);
+        setSize(500, 500);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
@@ -147,19 +151,27 @@ public class ReservationGUI extends JFrame {
         titleLabel.setFont(new Font("Arial", Font.BOLD, 16));
         titleLabel.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
         
-        JPanel formPanel = new JPanel(new GridLayout(5, 2, 10, 10));
+        JPanel formPanel = new JPanel(new GridLayout(6, 2, 10, 10));
         formPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         
         JLabel serviceLabel = new JLabel("Select Service:");
+        JLabel therapistLabel = new JLabel("Select Therapist:");
         JLabel dateLabel = new JLabel("Select Date:");
         JLabel timeLabel = new JLabel("Available Times:");
         
-        String[] services = {"Massage", "Facial", "Sauna", "Yoga"};
-        String[] dates = {"Monday 10 March", "Tuesday 11 March", "Wednesday 12 March", "Thursday 13 March", "Friday 14 March"};
+        String[] services = {"Massage", "Facial", "Sauna", "Yoga", "Hydrotherapy"};
+        String[] dates = {
+            "Monday 10 March", "Tuesday 11 March", "Wednesday 12 March", 
+            "Thursday 13 March", "Friday 14 March", "Saturday 15 March", "Sunday 16 March"
+        };
         
         serviceComboBox = new JComboBox<>(services);
+        therapistComboBox = new JComboBox<>();
         dateComboBox = new JComboBox<>(dates);
         timeComboBox = new JComboBox<>();
+        
+        // Add service change listener to update therapists
+        serviceComboBox.addActionListener(e -> updateTherapists());
         
         JButton showTimesBtn = new JButton("Show available times");
         JButton reserveBtn = new JButton("Make reservation");
@@ -167,6 +179,8 @@ public class ReservationGUI extends JFrame {
         
         formPanel.add(serviceLabel);
         formPanel.add(serviceComboBox);
+        formPanel.add(therapistLabel);
+        formPanel.add(therapistComboBox);
         formPanel.add(dateLabel);
         formPanel.add(dateComboBox);
         formPanel.add(timeLabel);
@@ -183,10 +197,46 @@ public class ReservationGUI extends JFrame {
             cardLayout.show(mainPanel, "WELCOME");
         });
         
+        // Initialize therapists for default service
+        updateTherapists();
+        
         reservationPanel.add(titleLabel, BorderLayout.NORTH);
         reservationPanel.add(formPanel, BorderLayout.CENTER);
         
         mainPanel.add(reservationPanel, "RESERVATION");
+    }
+
+    private void updateTherapists() {
+        String selectedService = (String) serviceComboBox.getSelectedItem();
+        therapistComboBox.removeAllItems();
+        
+        // Define therapists for each service
+        if ("Massage".equals(selectedService)) {
+            String[] therapists = {"Emma Wilson", "James Brown", "Sophia Lee", "Michael Chen", "Olivia Davis"};
+            for (String therapist : therapists) {
+                therapistComboBox.addItem(therapist);
+            }
+        } else if ("Facial".equals(selectedService)) {
+            String[] therapists = {"Isabella Martinez", "William Taylor", "Mia Anderson", "Benjamin Thomas", "Charlotte Garcia"};
+            for (String therapist : therapists) {
+                therapistComboBox.addItem(therapist);
+            }
+        } else if ("Sauna".equals(selectedService)) {
+            String[] therapists = {"Lucas Rodriguez", "Amelia Hernandez", "Henry Lopez", "Evelyn Gonzalez", "Alexander Perez"};
+            for (String therapist : therapists) {
+                therapistComboBox.addItem(therapist);
+            }
+        } else if ("Yoga".equals(selectedService)) {
+            String[] therapists = {"Harper Scott", "Daniel King", "Ella Green", "Matthew Hall", "Sofia Adams"};
+            for (String therapist : therapists) {
+                therapistComboBox.addItem(therapist);
+            }
+        } else if ("Hydrotherapy".equals(selectedService)) {
+            String[] therapists = {"Jackson Baker", "Avery Rivera", "Sebastian Carter", "Scarlett Mitchell", "David Turner"};
+            for (String therapist : therapists) {
+                therapistComboBox.addItem(therapist);
+            }
+        }
     }
 
     private void connectToServer() {
@@ -278,35 +328,44 @@ public class ReservationGUI extends JFrame {
     }
 
     private void showAvailableSlots() {
-        if (currentUser == null) {
-            JOptionPane.showMessageDialog(this, "Please login first", "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-        
-        String selectedService = (String) serviceComboBox.getSelectedItem();
-        String selectedDate = (String) dateComboBox.getSelectedItem();
-        
-        out.println("GET_AVAILABLE_SLOTS " + selectedService + " " + selectedDate);
+    if (currentUser == null) {
+        JOptionPane.showMessageDialog(this, "Please login first", "Error", JOptionPane.ERROR_MESSAGE);
+        return;
     }
+    
+    String selectedService = (String) serviceComboBox.getSelectedItem();
+    String selectedTherapist = (String) therapistComboBox.getSelectedItem();
+    String selectedDate = (String) dateComboBox.getSelectedItem();
+    
+    // Fix: Use underscores for both therapist and date to avoid parsing issues
+    String therapistForServer = selectedTherapist.replace(" ", "_");
+    String dateForServer = selectedDate.replace(" ", "_");
+    
+    out.println("GET_AVAILABLE_SLOTS " + selectedService + " " + therapistForServer + " " + dateForServer);
+}
 
-    private void makeReservation() {
-        if (currentUser == null) {
-            JOptionPane.showMessageDialog(this, "Please login first", "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-        
-        if (timeComboBox.getItemCount() == 0 || timeComboBox.getSelectedItem().equals("No available slots")) {
-            JOptionPane.showMessageDialog(this, "No available time slots selected", "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-        
-        String selectedService = (String) serviceComboBox.getSelectedItem();
-        String selectedDate = (String) dateComboBox.getSelectedItem();
-        String selectedTime = (String) timeComboBox.getSelectedItem();
-        
-        out.println("RESERVE " + selectedService + " " + selectedDate + " " + selectedTime);
+private void makeReservation() {
+    if (currentUser == null) {
+        JOptionPane.showMessageDialog(this, "Please login first", "Error", JOptionPane.ERROR_MESSAGE);
+        return;
     }
-
+    
+    if (timeComboBox.getItemCount() == 0 || timeComboBox.getSelectedItem().equals("No available slots")) {
+        JOptionPane.showMessageDialog(this, "No available time slots selected", "Error", JOptionPane.ERROR_MESSAGE);
+        return;
+    }
+    
+    String selectedService = (String) serviceComboBox.getSelectedItem();
+    String selectedTherapist = (String) therapistComboBox.getSelectedItem();
+    String selectedDate = (String) dateComboBox.getSelectedItem();
+    String selectedTime = (String) timeComboBox.getSelectedItem();
+    
+    // Fix: Use underscores for both therapist and date to avoid parsing issues
+    String therapistForServer = selectedTherapist.replace(" ", "_");
+    String dateForServer = selectedDate.replace(" ", "_");
+    
+    out.println("RESERVE " + selectedService + " " + therapistForServer + " " + dateForServer + " " + selectedTime);
+}
     public static void main(String[] args) {
         SwingUtilities.invokeLater(new Runnable() {
             public void run() {
