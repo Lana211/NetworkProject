@@ -1,376 +1,488 @@
 package com.mycompany.newserver;
 
-
-
-
-
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
 import java.net.Socket;
+import java.net.URL;
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 
 public class ReservationGUI extends JFrame {
-    private CardLayout cardLayout;
-    private JPanel mainPanel;
-    
-    private JTextField usernameField, loginUsernameField;
-    private JPasswordField passwordField, loginPasswordField;
-    private JComboBox<String> serviceComboBox, dateComboBox, timeComboBox, therapistComboBox;
-    
-    private PrintWriter out;
-    private BufferedReader in;
     private Socket socket;
+    private BufferedReader in;
+    private PrintWriter out;
     private String currentUser;
+    
+    // UI Components
+    private JPanel mainPanel;
+    private CardLayout cardLayout;
+    private BufferedImage backgroundImage;
+    private BufferedImage reservationBackgroundImage; // صورة ثانية لصفحة الحجز
+    
+    // Login/Register components
+    private JTextField usernameField;
+    private JPasswordField passwordField;
+    
+    // Reservation components
+    private JComboBox<String> serviceCombo;
+    private JComboBox<String> therapistCombo;
+    private JComboBox<String> dateCombo;
+    private JComboBox<String> timeCombo;
+    private JTextArea confirmationArea;
 
     public ReservationGUI() {
-        setTitle("Spa & Wellness Reservation System");
-        setSize(500, 500);
+        setTitle("Le Jené Spa - Reservation System");
+        setSize(1200, 1000);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
-
+        
+        // Load images (in production, use actual image files)
+        loadImages();
+        
+        // Setup connection
+        setupConnection();
+        
+        // Create UI
         cardLayout = new CardLayout();
         mainPanel = new JPanel(cardLayout);
-
-        createWelcomePanel();
-        createRegisterPanel();
-        createLoginPanel();
-        createReservationPanel();
-
+        
+        mainPanel.add(createLoginPanel(), "LOGIN");
+        mainPanel.add(createReservationPanel(), "RESERVATION");
+        
         add(mainPanel);
-        connectToServer();
-        
-        cardLayout.show(mainPanel, "WELCOME");
+        setVisible(true);
     }
-
-    private void createWelcomePanel() {
-        JPanel welcomePanel = new JPanel(new BorderLayout());
-        
-        JLabel titleLabel = new JLabel("Spa & Wellness Reservation System", JLabel.CENTER);
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 20));
-        titleLabel.setBorder(BorderFactory.createEmptyBorder(20, 0, 20, 0));
-        
-        JPanel buttonPanel = new JPanel(new GridLayout(2, 1, 10, 10));
-        buttonPanel.setBorder(BorderFactory.createEmptyBorder(50, 50, 50, 50));
-        
-        JButton newUserBtn = new JButton("New user");
-        JButton existingUserBtn = new JButton("Existing user");
-        
-        newUserBtn.addActionListener(e -> cardLayout.show(mainPanel, "REGISTER"));
-        existingUserBtn.addActionListener(e -> cardLayout.show(mainPanel, "LOGIN"));
-        
-        buttonPanel.add(newUserBtn);
-        buttonPanel.add(existingUserBtn);
-        
-        welcomePanel.add(titleLabel, BorderLayout.NORTH);
-        welcomePanel.add(buttonPanel, BorderLayout.CENTER);
-        
-        mainPanel.add(welcomePanel, "WELCOME");
-    }
-
-    private void createRegisterPanel() {
-        JPanel registerPanel = new JPanel(new BorderLayout());
-        
-        JLabel titleLabel = new JLabel("Spa & Wellness Reservation System", JLabel.CENTER);
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 16));
-        titleLabel.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
-        
-        JPanel formPanel = new JPanel(new GridLayout(4, 2, 10, 10));
-        formPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-        
-        JLabel newUserLabel = new JLabel("New user");
-        JLabel usernameLabel = new JLabel("Username:");
-        JLabel passwordLabel = new JLabel("Password:");
-        
-        usernameField = new JTextField();
-        passwordField = new JPasswordField();
-        
-        JButton registerBtn = new JButton("Connect & Register");
-        JButton backBtn = new JButton("Back");
-        
-        formPanel.add(newUserLabel);
-        formPanel.add(new JLabel());
-        formPanel.add(usernameLabel);
-        formPanel.add(usernameField);
-        formPanel.add(passwordLabel);
-        formPanel.add(passwordField);
-        formPanel.add(backBtn);
-        formPanel.add(registerBtn);
-        
-        registerBtn.addActionListener(e -> registerUser());
-        backBtn.addActionListener(e -> cardLayout.show(mainPanel, "WELCOME"));
-        
-        registerPanel.add(titleLabel, BorderLayout.NORTH);
-        registerPanel.add(formPanel, BorderLayout.CENTER);
-        
-        mainPanel.add(registerPanel, "REGISTER");
-    }
-
-    private void createLoginPanel() {
-        JPanel loginPanel = new JPanel(new BorderLayout());
-        
-        JLabel titleLabel = new JLabel("Spa & Wellness Reservation System", JLabel.CENTER);
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 16));
-        titleLabel.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
-        
-        JPanel formPanel = new JPanel(new GridLayout(4, 2, 10, 10));
-        formPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-        
-        JLabel existingUserLabel = new JLabel("Existing user");
-        JLabel usernameLabel = new JLabel("Username:");
-        JLabel passwordLabel = new JLabel("Password:");
-        
-        loginUsernameField = new JTextField();
-        loginPasswordField = new JPasswordField();
-        
-        JButton loginBtn = new JButton("Connect & Login");
-        JButton backBtn = new JButton("Back");
-        
-        formPanel.add(existingUserLabel);
-        formPanel.add(new JLabel());
-        formPanel.add(usernameLabel);
-        formPanel.add(loginUsernameField);
-        formPanel.add(passwordLabel);
-        formPanel.add(loginPasswordField);
-        formPanel.add(backBtn);
-        formPanel.add(loginBtn);
-        
-        loginBtn.addActionListener(e -> loginUser());
-        backBtn.addActionListener(e -> cardLayout.show(mainPanel, "WELCOME"));
-        
-        loginPanel.add(titleLabel, BorderLayout.NORTH);
-        loginPanel.add(formPanel, BorderLayout.CENTER);
-        
-        mainPanel.add(loginPanel, "LOGIN");
-    }
-
-    private void createReservationPanel() {
-        JPanel reservationPanel = new JPanel(new BorderLayout());
-        
-        JLabel titleLabel = new JLabel("Make new reservation", JLabel.CENTER);
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 16));
-        titleLabel.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
-        
-        JPanel formPanel = new JPanel(new GridLayout(6, 2, 10, 10));
-        formPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-        
-        JLabel serviceLabel = new JLabel("Select Service:");
-        JLabel therapistLabel = new JLabel("Select Therapist:");
-        JLabel dateLabel = new JLabel("Select Date:");
-        JLabel timeLabel = new JLabel("Available Times:");
-        
-        String[] services = {"Massage", "Facial", "Sauna", "Yoga", "Hydrotherapy"};
-        String[] dates = {
-            "Monday 10 March", "Tuesday 11 March", "Wednesday 12 March", 
-            "Thursday 13 March", "Friday 14 March", "Saturday 15 March", "Sunday 16 March"
-        };
-        
-        serviceComboBox = new JComboBox<>(services);
-        therapistComboBox = new JComboBox<>();
-        dateComboBox = new JComboBox<>(dates);
-        timeComboBox = new JComboBox<>();
-        
-        // Add service change listener to update therapists
-        serviceComboBox.addActionListener(e -> updateTherapists());
-        
-        JButton showTimesBtn = new JButton("Show available times");
-        JButton reserveBtn = new JButton("Make reservation");
-        JButton logoutBtn = new JButton("Logout");
-        
-        formPanel.add(serviceLabel);
-        formPanel.add(serviceComboBox);
-        formPanel.add(therapistLabel);
-        formPanel.add(therapistComboBox);
-        formPanel.add(dateLabel);
-        formPanel.add(dateComboBox);
-        formPanel.add(timeLabel);
-        formPanel.add(timeComboBox);
-        formPanel.add(showTimesBtn);
-        formPanel.add(reserveBtn);
-        formPanel.add(new JLabel());
-        formPanel.add(logoutBtn);
-        
-        showTimesBtn.addActionListener(e -> showAvailableSlots());
-        reserveBtn.addActionListener(e -> makeReservation());
-        logoutBtn.addActionListener(e -> {
-            currentUser = null;
-            cardLayout.show(mainPanel, "WELCOME");
-        });
-        
-        // Initialize therapists for default service
-        updateTherapists();
-        
-        reservationPanel.add(titleLabel, BorderLayout.NORTH);
-        reservationPanel.add(formPanel, BorderLayout.CENTER);
-        
-        mainPanel.add(reservationPanel, "RESERVATION");
-    }
-
-    private void updateTherapists() {
-        String selectedService = (String) serviceComboBox.getSelectedItem();
-        therapistComboBox.removeAllItems();
-        
-        // Define therapists for each service
-        if ("Massage".equals(selectedService)) {
-            String[] therapists = {"Emma Wilson", "James Brown", "Sophia Lee", "Michael Chen", "Olivia Davis"};
-            for (String therapist : therapists) {
-                therapistComboBox.addItem(therapist);
-            }
-        } else if ("Facial".equals(selectedService)) {
-            String[] therapists = {"Isabella Martinez", "William Taylor", "Mia Anderson", "Benjamin Thomas", "Charlotte Garcia"};
-            for (String therapist : therapists) {
-                therapistComboBox.addItem(therapist);
-            }
-        } else if ("Sauna".equals(selectedService)) {
-            String[] therapists = {"Lucas Rodriguez", "Amelia Hernandez", "Henry Lopez", "Evelyn Gonzalez", "Alexander Perez"};
-            for (String therapist : therapists) {
-                therapistComboBox.addItem(therapist);
-            }
-        } else if ("Yoga".equals(selectedService)) {
-            String[] therapists = {"Harper Scott", "Daniel King", "Ella Green", "Matthew Hall", "Sofia Adams"};
-            for (String therapist : therapists) {
-                therapistComboBox.addItem(therapist);
-            }
-        } else if ("Hydrotherapy".equals(selectedService)) {
-            String[] therapists = {"Jackson Baker", "Avery Rivera", "Sebastian Carter", "Scarlett Mitchell", "David Turner"};
-            for (String therapist : therapists) {
-                therapistComboBox.addItem(therapist);
-            }
+    
+    private void loadImages() {
+        try {
+            // صورة صفحة Login/Register
+            backgroundImage = ImageIO.read(new File("C:\\Users\\96650\\Documents\\Network\\src\\com\\mycompany\\newserver\\Beige Brown Minimalist Aesthetic Spa Salon Presentation.png"));
+            // صورة صفحة الحجز
+            reservationBackgroundImage = ImageIO.read(new File("C:\\Users\\96650\\Documents\\Network\\src\\com\\mycompany\\newserver\\Another back gound.png"));
+        } catch (IOException e) {
+            System.out.println("Could not load images: " + e.getMessage());
+            // البرنامج سيعمل بدون الصور
         }
     }
-
-    private void connectToServer() {
+    
+    private void setupConnection() {
         try {
             socket = new Socket("localhost", 9090);
-            out = new PrintWriter(socket.getOutputStream(), true);
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-
-            Thread messageThread = new Thread(new Runnable() {
-                public void run() {
-                    try {
-                        String response;
-                        while ((response = in.readLine()) != null) {
-                            final String msg = response;
-                            SwingUtilities.invokeLater(new Runnable() {
-                                public void run() {
-                                    handleServerMessage(msg);
-                                }
-                            });
-                        }
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-            });
-            messageThread.start();
-
-        } catch (IOException e) {
-            JOptionPane.showMessageDialog(this, "Cannot connect to server", "Error", JOptionPane.ERROR_MESSAGE);
-        }
-    }
-
-    private void handleServerMessage(String message) {
-        if (message.startsWith("REGISTER_SUCCESS")) {
-            currentUser = message.split(" ")[1];
-            JOptionPane.showMessageDialog(this, "You are connected and registered successfully", "Success", JOptionPane.INFORMATION_MESSAGE);
-            cardLayout.show(mainPanel, "RESERVATION");
-        } else if (message.startsWith("LOGIN_SUCCESS")) {
-            currentUser = message.split(" ")[1];
-            JOptionPane.showMessageDialog(this, "You are connected and logged in successfully", "Success", JOptionPane.INFORMATION_MESSAGE);
-            cardLayout.show(mainPanel, "RESERVATION");
-        } else if (message.startsWith("RESERVE_CONFIRMED")) {
-            JOptionPane.showMessageDialog(this, "Your booking has been confirmed!\n" + message.substring(18), "Booking Confirmed", JOptionPane.INFORMATION_MESSAGE);
-        } else if (message.startsWith("AVAILABLE_SLOTS")) {
-            String slotsStr = message.substring(16);
-            String[] slots = slotsStr.split(",");
+            out = new PrintWriter(socket.getOutputStream(), true);
             
-            timeComboBox.removeAllItems();
-            if (slots.length == 0 || slots[0].isEmpty()) {
-                timeComboBox.addItem("No available slots");
-                JOptionPane.showMessageDialog(this, "No available time slots for selected service and date", "No Slots", JOptionPane.WARNING_MESSAGE);
-            } else {
-                for (String slot : slots) {
-                    timeComboBox.addItem(slot);
+            // Start listener thread
+            new Thread(() -> {
+                try {
+                    String response;
+                    while ((response = in.readLine()) != null) {
+                        handleServerResponse(response);
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
-                JOptionPane.showMessageDialog(this, "Available times loaded successfully", "Slots Available", JOptionPane.INFORMATION_MESSAGE);
-            }
-        } else if (message.startsWith("REGISTER_FAILED")) {
-            JOptionPane.showMessageDialog(this, "Registration failed: " + message.substring(16), "Error", JOptionPane.ERROR_MESSAGE);
-        } else if (message.startsWith("LOGIN_FAILED")) {
-            JOptionPane.showMessageDialog(this, "Login failed: " + message.substring(13), "Error", JOptionPane.ERROR_MESSAGE);
-        } else if (message.startsWith("RESERVE_FAILED")) {
-            JOptionPane.showMessageDialog(this, "Reservation failed: " + message.substring(15), "Error", JOptionPane.ERROR_MESSAGE);
+            }).start();
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(this, 
+                "Could not connect to server. Please ensure the server is running.",
+                "Connection Error", JOptionPane.ERROR_MESSAGE);
         }
     }
-
-    private void registerUser() {
+    
+    private JPanel createLoginPanel() {
+        JPanel panel = new LoginBackgroundPanel(); // استخدام panel خاص لصفحة Login
+        panel.setLayout(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        
+        // Login form container with semi-transparent background
+        JPanel formPanel = new JPanel();
+        formPanel.setLayout(new BoxLayout(formPanel, BoxLayout.Y_AXIS));
+        formPanel.setBackground(new Color(255, 255, 255, 250)); // أكثر وضوح
+        formPanel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(139, 69, 19), 3),
+            BorderFactory.createEmptyBorder(30, 35, 30, 35)
+        ));
+        formPanel.setPreferredSize(new Dimension(490, 243)); // حجم الفورم المطلوب
+        formPanel.setMaximumSize(new Dimension(490, 243));
+        formPanel.setMinimumSize(new Dimension(490, 243));
+        
+        // Logo/Title
+        JLabel titleLabel = new JLabel("Le Jené Spa", SwingConstants.CENTER);
+        titleLabel.setFont(new Font("Serif", Font.BOLD, 28));
+        titleLabel.setForeground(new Color(139, 69, 19));
+        titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        formPanel.add(titleLabel);
+        
+        JLabel subtitleLabel = new JLabel("BEAUTY SPA", SwingConstants.CENTER);
+        subtitleLabel.setFont(new Font("Serif", Font.PLAIN, 12));
+        subtitleLabel.setForeground(new Color(139, 69, 19));
+        subtitleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        formPanel.add(subtitleLabel);
+        
+        formPanel.add(Box.createVerticalStrut(20));
+        
+        // Username field
+        JLabel userLabel = new JLabel("Username:");
+        userLabel.setFont(new Font("Arial", Font.PLAIN, 12));
+        userLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        formPanel.add(userLabel);
+        
+        usernameField = new JTextField(20);
+        usernameField.setMaximumSize(new Dimension(250, 30));
+        usernameField.setFont(new Font("Arial", Font.PLAIN, 12));
+        usernameField.setAlignmentX(Component.CENTER_ALIGNMENT);
+        formPanel.add(usernameField);
+        formPanel.add(Box.createVerticalStrut(10));
+        
+        // Password field
+        JLabel passLabel = new JLabel("Password:");
+        passLabel.setFont(new Font("Arial", Font.PLAIN, 12));
+        passLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        formPanel.add(passLabel);
+        
+        passwordField = new JPasswordField(20);
+        passwordField.setMaximumSize(new Dimension(250, 30));
+        passwordField.setFont(new Font("Arial", Font.PLAIN, 12));
+        passwordField.setAlignmentX(Component.CENTER_ALIGNMENT);
+        formPanel.add(passwordField);
+        formPanel.add(Box.createVerticalStrut(15));
+        
+        // Buttons panel
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
+        buttonPanel.setOpaque(false);
+        buttonPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        
+        JButton loginBtn = createStyledButton("Login");
+        loginBtn.setPreferredSize(new Dimension(100, 30));
+        loginBtn.addActionListener(e -> handleLogin());
+        
+        JButton registerBtn = createStyledButton("Register");
+        registerBtn.setPreferredSize(new Dimension(100, 30));
+        registerBtn.addActionListener(e -> handleRegister());
+        
+        buttonPanel.add(loginBtn);
+        buttonPanel.add(registerBtn);
+        formPanel.add(buttonPanel);
+        
+        // وضع الفورم على اليمين في النص
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.anchor = GridBagConstraints.EAST; // على اليمين
+        gbc.insets = new Insets(75, 0, 0, 10); // 75 من فوق (ينزل)، 10 من اليمين (أقرب لليمين جداً)
+        panel.add(formPanel, gbc);
+        
+        return panel;
+    }
+    
+    private JPanel createReservationPanel() {
+        JPanel panel = new ReservationBackgroundPanel(); // استخدام panel خاص لصفحة الحجز
+        panel.setLayout(new BorderLayout());
+        
+        // Wrapper for header to center it
+        JPanel headerWrapper = new JPanel(new GridBagLayout());
+        headerWrapper.setOpaque(false);
+        
+        // Header
+        JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setBackground(new Color(139, 69, 19));
+        headerPanel.setPreferredSize(new Dimension(1100, 100)); // نفس عرض الصورة
+        headerPanel.setMaximumSize(new Dimension(1100, 100));
+        
+        JLabel headerLabel = new JLabel("Le Jené Spa - Book Your Treatment", SwingConstants.CENTER);
+        headerLabel.setFont(new Font("Serif", Font.BOLD, 32));
+        headerLabel.setForeground(Color.WHITE);
+        headerPanel.add(headerLabel, BorderLayout.CENTER);
+        
+        // Logout button on the right side of header
+        JButton logoutBtn = new JButton("Logout");
+        logoutBtn.setFont(new Font("Arial", Font.BOLD, 14));
+        logoutBtn.setBackground(new Color(180, 90, 30));
+        logoutBtn.setForeground(Color.WHITE);
+        logoutBtn.setFocusPainted(false);
+        logoutBtn.setBorderPainted(false);
+        logoutBtn.setPreferredSize(new Dimension(120, 40));
+        logoutBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        logoutBtn.addActionListener(e -> {
+            currentUser = null;
+            cardLayout.show(mainPanel, "LOGIN");
+        });
+        logoutBtn.addMouseListener(new MouseAdapter() {
+            public void mouseEntered(MouseEvent e) {
+                logoutBtn.setBackground(new Color(150, 70, 20));
+            }
+            public void mouseExited(MouseEvent e) {
+                logoutBtn.setBackground(new Color(180, 90, 30));
+            }
+        });
+        
+        JPanel logoutPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 20, 30));
+        logoutPanel.setOpaque(false);
+        logoutPanel.add(logoutBtn);
+        headerPanel.add(logoutPanel, BorderLayout.EAST);
+        
+        headerWrapper.add(headerPanel);
+        panel.add(headerWrapper, BorderLayout.NORTH);
+        
+        // Main content with semi-transparent background
+        JPanel contentPanel = new JPanel();
+        contentPanel.setLayout(new GridBagLayout());
+        contentPanel.setOpaque(false);
+        
+        JPanel formPanel = new JPanel(new GridBagLayout());
+        formPanel.setBackground(new Color(255, 255, 255, 250)); // أكثر وضوح
+        formPanel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(139, 69, 19), 3),
+            BorderFactory.createEmptyBorder(30, 40, 30, 40)
+        ));
+        
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(10, 10, 10, 10);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        
+        // Service selection
+        gbc.gridx = 0; gbc.gridy = 0;
+        formPanel.add(createLabel("Select Service:"), gbc);
+        
+        gbc.gridx = 1;
+        serviceCombo = new JComboBox<>(new String[]{"Massage", "Facial", "Sauna", "Yoga", "Hydrotherapy"});
+        styleComboBox(serviceCombo);
+        formPanel.add(serviceCombo, gbc);
+        
+        // Therapist selection
+        gbc.gridx = 0; gbc.gridy = 1;
+        formPanel.add(createLabel("Select Therapist:"), gbc);
+        
+        gbc.gridx = 1;
+        therapistCombo = new JComboBox<>(new String[]{"Sarah Johnson", "Maria Garcia", "Emma Wilson", "Olivia Brown"});
+        styleComboBox(therapistCombo);
+        formPanel.add(therapistCombo, gbc);
+        
+        // Date selection
+        gbc.gridx = 0; gbc.gridy = 2;
+        formPanel.add(createLabel("Select Date:"), gbc);
+        
+        gbc.gridx = 1;
+        dateCombo = new JComboBox<>(new String[]{
+            "January 15 2026", "January 16 2026", "January 17 2026",
+            "January 18 2026", "January 19 2026", "January 20 2026",
+            "January 21 2026", "January 22 2026", "January 23 2026",
+            "January 24 2026"
+        });
+        styleComboBox(dateCombo);
+        formPanel.add(dateCombo, gbc);
+        
+        // Check availability button
+        gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2;
+        JButton checkBtn = createStyledButton("Check Available Times");
+        checkBtn.addActionListener(e -> checkAvailability());
+        formPanel.add(checkBtn, gbc);
+        
+        // Time selection
+        gbc.gridx = 0; gbc.gridy = 4; gbc.gridwidth = 1;
+        formPanel.add(createLabel("Select Time:"), gbc);
+        
+        gbc.gridx = 1;
+        timeCombo = new JComboBox<>();
+        styleComboBox(timeCombo);
+        timeCombo.setEnabled(false);
+        formPanel.add(timeCombo, gbc);
+        
+        // Reserve button
+        gbc.gridx = 0; gbc.gridy = 5; gbc.gridwidth = 2;
+        JButton reserveBtn = createStyledButton("Make Reservation");
+        reserveBtn.addActionListener(e -> makeReservation());
+        formPanel.add(reserveBtn, gbc);
+        
+        // Confirmation area
+        gbc.gridy = 6;
+        confirmationArea = new JTextArea(5, 40);
+        confirmationArea.setEditable(false);
+        confirmationArea.setFont(new Font("Arial", Font.PLAIN, 12));
+        confirmationArea.setBorder(BorderFactory.createLineBorder(new Color(139, 69, 19), 1));
+        JScrollPane scrollPane = new JScrollPane(confirmationArea);
+        formPanel.add(scrollPane, gbc);
+        
+        GridBagConstraints mainGbc = new GridBagConstraints();
+        contentPanel.add(formPanel, mainGbc);
+        
+        panel.add(contentPanel, BorderLayout.CENTER);
+        
+        return panel;
+    }
+    
+    private JLabel createLabel(String text) {
+        JLabel label = new JLabel(text);
+        label.setFont(new Font("Arial", Font.BOLD, 14));
+        label.setForeground(new Color(139, 69, 19));
+        return label;
+    }
+    
+    private JButton createStyledButton(String text) {
+        JButton button = new JButton(text);
+        button.setFont(new Font("Arial", Font.BOLD, 14));
+        button.setBackground(new Color(139, 69, 19));
+        button.setForeground(Color.WHITE);
+        button.setFocusPainted(false);
+        button.setBorderPainted(false);
+        button.setPreferredSize(new Dimension(150, 40));
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        
+        button.addMouseListener(new MouseAdapter() {
+            public void mouseEntered(MouseEvent e) {
+                button.setBackground(new Color(101, 50, 14));
+            }
+            public void mouseExited(MouseEvent e) {
+                button.setBackground(new Color(139, 69, 19));
+            }
+        });
+        
+        return button;
+    }
+    
+    private void styleComboBox(JComboBox<String> combo) {
+        combo.setFont(new Font("Arial", Font.PLAIN, 14));
+        combo.setPreferredSize(new Dimension(300, 35));
+        combo.setBackground(Color.WHITE);
+    }
+    
+    private void handleLogin() {
         String username = usernameField.getText();
         String password = new String(passwordField.getPassword());
         
         if (username.isEmpty() || password.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Please enter username and password", "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-        
-        out.println("REGISTER " + username + " " + password);
-    }
-
-    private void loginUser() {
-        String username = loginUsernameField.getText();
-        String password = new String(loginPasswordField.getPassword());
-        
-        if (username.isEmpty() || password.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Please enter username and password", "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Please enter username and password");
             return;
         }
         
         out.println("LOGIN " + username + " " + password);
     }
-
-    private void showAvailableSlots() {
-    if (currentUser == null) {
-        JOptionPane.showMessageDialog(this, "Please login first", "Error", JOptionPane.ERROR_MESSAGE);
-        return;
+    
+    private void handleRegister() {
+        String username = usernameField.getText();
+        String password = new String(passwordField.getPassword());
+        
+        if (username.isEmpty() || password.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please enter username and password");
+            return;
+        }
+        
+        out.println("REGISTER " + username + " " + password);
     }
     
-    String selectedService = (String) serviceComboBox.getSelectedItem();
-    String selectedTherapist = (String) therapistComboBox.getSelectedItem();
-    String selectedDate = (String) dateComboBox.getSelectedItem();
-    
-    // Fix: Use underscores for both therapist and date to avoid parsing issues
-    String therapistForServer = selectedTherapist.replace(" ", "_");
-    String dateForServer = selectedDate.replace(" ", "_");
-    
-    out.println("GET_AVAILABLE_SLOTS " + selectedService + " " + therapistForServer + " " + dateForServer);
-}
-
-private void makeReservation() {
-    if (currentUser == null) {
-        JOptionPane.showMessageDialog(this, "Please login first", "Error", JOptionPane.ERROR_MESSAGE);
-        return;
+    private void checkAvailability() {
+        String service = (String) serviceCombo.getSelectedItem();
+        String therapist = ((String) therapistCombo.getSelectedItem()).replace(" ", "_");
+        String date = ((String) dateCombo.getSelectedItem()).replace(" ", "_");
+        
+        out.println("GET_AVAILABLE_SLOTS " + service + " " + therapist + " " + date);
     }
     
-    if (timeComboBox.getItemCount() == 0 || timeComboBox.getSelectedItem().equals("No available slots")) {
-        JOptionPane.showMessageDialog(this, "No available time slots selected", "Error", JOptionPane.ERROR_MESSAGE);
-        return;
+    private void makeReservation() {
+        if (timeCombo.getSelectedItem() == null) {
+            JOptionPane.showMessageDialog(this, "Please check availability and select a time first");
+            return;
+        }
+        
+        String service = (String) serviceCombo.getSelectedItem();
+        String therapist = ((String) therapistCombo.getSelectedItem()).replace(" ", "_");
+        String date = ((String) dateCombo.getSelectedItem()).replace(" ", "_");
+        String time = (String) timeCombo.getSelectedItem();
+        
+        out.println("RESERVE " + service + " " + therapist + " " + date + " " + time);
     }
     
-    String selectedService = (String) serviceComboBox.getSelectedItem();
-    String selectedTherapist = (String) therapistComboBox.getSelectedItem();
-    String selectedDate = (String) dateComboBox.getSelectedItem();
-    String selectedTime = (String) timeComboBox.getSelectedItem();
-    
-    // Fix: Use underscores for both therapist and date to avoid parsing issues
-    String therapistForServer = selectedTherapist.replace(" ", "_");
-    String dateForServer = selectedDate.replace(" ", "_");
-    
-    out.println("RESERVE " + selectedService + " " + therapistForServer + " " + dateForServer + " " + selectedTime);
-}
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(new Runnable() {
-            public void run() {
-                new ReservationGUI().setVisible(true);
+    private void handleServerResponse(String response) {
+        SwingUtilities.invokeLater(() -> {
+            if (response.startsWith("LOGIN_SUCCESS") || response.startsWith("REGISTER_SUCCESS")) {
+                String[] parts = response.split(" ");
+                currentUser = parts[1];
+                JOptionPane.showMessageDialog(this, "Welcome, " + currentUser + "!");
+                cardLayout.show(mainPanel, "RESERVATION");
+            } else if (response.startsWith("LOGIN_FAILED") || response.startsWith("REGISTER_FAILED")) {
+                JOptionPane.showMessageDialog(this, response.substring(response.indexOf(" ") + 1));
+            } else if (response.startsWith("AVAILABLE_SLOTS")) {
+                timeCombo.removeAllItems();
+                String slots = response.substring("AVAILABLE_SLOTS ".length());
+                if (slots.trim().isEmpty()) {
+                    JOptionPane.showMessageDialog(this, "No available slots for this selection");
+                    timeCombo.setEnabled(false);
+                } else {
+                    String[] times = slots.split(",");
+                    for (String time : times) {
+                        timeCombo.addItem(time);
+                    }
+                    timeCombo.setEnabled(true);
+                }
+            } else if (response.startsWith("RESERVE_CONFIRMED")) {
+                String booking = response.substring("RESERVE_CONFIRMED ".length());
+                confirmationArea.append("✓ Confirmed: " + booking + "\n");
+                JOptionPane.showMessageDialog(this, "Reservation confirmed!\n" + booking);
+            } else if (response.startsWith("RESERVE_FAILED")) {
+                String message = response.substring("RESERVE_FAILED ".length());
+                JOptionPane.showMessageDialog(this, message, "Reservation Failed", JOptionPane.ERROR_MESSAGE);
             }
         });
+    }
+    
+    // Custom panel with background image for Login page
+    class LoginBackgroundPanel extends JPanel {
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            Graphics2D g2d = (Graphics2D) g;
+            
+            // If background image is loaded, draw it normally without transparency
+            if (backgroundImage != null) {
+                // حساب الموقع عشان تكون في المنتصف
+                int x = (getWidth() - 1000) / 2;
+                int y = (getHeight() - 400) / 2;
+                
+                // رسم الصورة بشكل طبيعي بدون شفافية
+                g2d.drawImage(backgroundImage, x, y, 1000, 400, null);
+            } else {
+                // Create gradient background if no image (spa colors)
+                GradientPaint gradient = new GradientPaint(
+                    0, 0, new Color(245, 245, 220),
+                    0, getHeight(), new Color(222, 184, 135)
+                );
+                g2d.setPaint(gradient);
+                g2d.fillRect(0, 0, getWidth(), getHeight());
+            }
+        }
+    }
+    
+    // Custom panel with background image for Reservation page
+    class ReservationBackgroundPanel extends JPanel {
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            Graphics2D g2d = (Graphics2D) g;
+            
+            // If reservation background image is loaded, draw it bigger than the form
+            if (reservationBackgroundImage != null) {
+                // حساب الموقع عشان تكون في المنتصف - حجم أكبر من الفورم
+                int imgWidth = 1100;  // أكبر من 1000
+                int imgHeight = 700;  // أكبر من 400
+                int x = (getWidth() - imgWidth) / 2;
+                int y = (getHeight() - imgHeight) / 2;
+                
+                // رسم الصورة بشكل طبيعي بدون شفافية
+                g2d.drawImage(reservationBackgroundImage, x, y, imgWidth, imgHeight, null);
+            } else {
+                // Create gradient background if no image (spa colors)
+                GradientPaint gradient = new GradientPaint(
+                    0, 0, new Color(245, 245, 220),
+                    0, getHeight(), new Color(222, 184, 135)
+                );
+                g2d.setPaint(gradient);
+                g2d.fillRect(0, 0, getWidth(), getHeight());
+            }
+        }
+    }
+    
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> new ReservationGUI());
     }
 }
