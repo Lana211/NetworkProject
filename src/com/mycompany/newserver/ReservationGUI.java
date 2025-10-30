@@ -57,9 +57,10 @@ public class ReservationGUI extends JFrame {
     
     private void loadImages() {
         try {
-            // قراءة الصور من نفس المجلد (package)
-            backgroundImage = ImageIO.read(getClass().getResource("background.png"));
-            reservationBackgroundImage = ImageIO.read(getClass().getResource("reservation_bg.png"));
+            // قراءة الصور من مجلد resources
+            backgroundImage = ImageIO.read(getClass().getClassLoader().getResource("background.png"));
+            reservationBackgroundImage = ImageIO.read(getClass().getClassLoader().getResource("reservation_bg.png"));
+            System.out.println("Images loaded successfully!");
         } catch (Exception e) {
             System.out.println("Could not load images: " + e.getMessage());
             e.printStackTrace();
