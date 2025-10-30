@@ -57,12 +57,12 @@ public class ReservationGUI extends JFrame {
     
     private void loadImages() {
         try {
-            // صورة صفحة Login/Register
-            backgroundImage = ImageIO.read(new File("C:\\Users\\96650\\Documents\\Network\\src\\com\\mycompany\\newserver\\Beige Brown Minimalist Aesthetic Spa Salon Presentation.png"));
-            // صورة صفحة الحجز
-            reservationBackgroundImage = ImageIO.read(new File("C:\\Users\\96650\\Documents\\Network\\src\\com\\mycompany\\newserver\\Another back gound.png"));
-        } catch (IOException e) {
+            // قراءة الصور من نفس المجلد (package)
+            backgroundImage = ImageIO.read(getClass().getResource("background.png"));
+            reservationBackgroundImage = ImageIO.read(getClass().getResource("reservation_bg.png"));
+        } catch (Exception e) {
             System.out.println("Could not load images: " + e.getMessage());
+            e.printStackTrace();
             // البرنامج سيعمل بدون الصور
         }
     }
@@ -255,9 +255,12 @@ public class ReservationGUI extends JFrame {
         formPanel.add(createLabel("Select Therapist:"), gbc);
         
         gbc.gridx = 1;
-        therapistCombo = new JComboBox<>(new String[]{"Sarah Johnson", "Maria Garcia", "Emma Wilson", "Olivia Brown"});
+        therapistCombo = new JComboBox<>();
         styleComboBox(therapistCombo);
         formPanel.add(therapistCombo, gbc);
+        
+        // Update therapists when service changes
+        serviceCombo.addActionListener(e -> updateTherapistList());
         
         // Date selection
         gbc.gridx = 0; gbc.gridy = 2;
@@ -309,7 +312,39 @@ public class ReservationGUI extends JFrame {
         
         panel.add(contentPanel, BorderLayout.CENTER);
         
+        // Initialize therapists for first service
+        updateTherapistList();
+        
         return panel;
+    }
+    
+    private void updateTherapistList() {
+        String selectedService = (String) serviceCombo.getSelectedItem();
+        therapistCombo.removeAllItems();
+        
+        String[] therapists = new String[0];
+        
+        switch (selectedService) {
+            case "Massage":
+                therapists = new String[]{"Emma Wilson", "James Brown", "Sophia Lee", "Michael Chen", "Olivia Davis"};
+                break;
+            case "Facial":
+                therapists = new String[]{"Isabella Martinez", "William Taylor", "Mia Anderson", "Benjamin Thomas", "Charlotte Garcia"};
+                break;
+            case "Sauna":
+                therapists = new String[]{"Lucas Rodriguez", "Amelia Hernandez", "Henry Lopez", "Evelyn Gonzalez", "Alexander Perez"};
+                break;
+            case "Yoga":
+                therapists = new String[]{"Harper Scott", "Daniel King", "Ella Green", "Matthew Hall", "Sofia Adams"};
+                break;
+            case "Hydrotherapy":
+                therapists = new String[]{"Jackson Baker", "Avery Rivera", "Sebastian Carter", "Scarlett Mitchell", "David Turner"};
+                break;
+        }
+        
+        for (String therapist : therapists) {
+            therapistCombo.addItem(therapist);
+        }
     }
     
     private JLabel createLabel(String text) {
