@@ -5,7 +5,6 @@ import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
 import java.net.Socket;
-import java.net.URL;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 
@@ -19,7 +18,7 @@ public class ReservationGUI extends JFrame {
     private JPanel mainPanel;
     private CardLayout cardLayout;
     private BufferedImage backgroundImage;
-    private BufferedImage reservationBackgroundImage; // صورة ثانية لصفحة الحجز
+    private BufferedImage reservationBackgroundImage;
     
     // Login/Register components
     private JTextField usernameField;
@@ -38,7 +37,7 @@ public class ReservationGUI extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         
-        // Load images (in production, use actual image files)
+        // Load images
         loadImages();
         
         // Setup connection
@@ -57,9 +56,9 @@ public class ReservationGUI extends JFrame {
     
     private void loadImages() {
         try {
-            // قراءة الصور من مجلد resources
-            backgroundImage = ImageIO.read(getClass().getClassLoader().getResource("background.png"));
-            reservationBackgroundImage = ImageIO.read(getClass().getClassLoader().getResource("reservation_bg.png"));
+            // قراءة الصور من نفس المجلد مع الـ Java files
+            backgroundImage = ImageIO.read(getClass().getResource("background.png"));
+            reservationBackgroundImage = ImageIO.read(getClass().getResource("reservation_bg.png"));
             System.out.println("Images loaded successfully!");
         } catch (Exception e) {
             System.out.println("Could not load images: " + e.getMessage());
@@ -93,19 +92,19 @@ public class ReservationGUI extends JFrame {
     }
     
     private JPanel createLoginPanel() {
-        JPanel panel = new LoginBackgroundPanel(); // استخدام panel خاص لصفحة Login
+        JPanel panel = new LoginBackgroundPanel();
         panel.setLayout(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
         
-        // Login form container with semi-transparent background
+        // Login form container
         JPanel formPanel = new JPanel();
         formPanel.setLayout(new BoxLayout(formPanel, BoxLayout.Y_AXIS));
-        formPanel.setBackground(new Color(255, 255, 255, 250)); // أكثر وضوح
+        formPanel.setBackground(new Color(255, 255, 255, 250));
         formPanel.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(new Color(139, 69, 19), 3),
             BorderFactory.createEmptyBorder(30, 35, 30, 35)
         ));
-        formPanel.setPreferredSize(new Dimension(490, 243)); // حجم الفورم المطلوب
+        formPanel.setPreferredSize(new Dimension(490, 243));
         formPanel.setMaximumSize(new Dimension(490, 243));
         formPanel.setMinimumSize(new Dimension(490, 243));
         
@@ -167,18 +166,18 @@ public class ReservationGUI extends JFrame {
         buttonPanel.add(registerBtn);
         formPanel.add(buttonPanel);
         
-        // وضع الفورم على اليمين في النص
+        // وضع الفورم على اليمين
         gbc.gridx = 0;
         gbc.gridy = 0;
-        gbc.anchor = GridBagConstraints.EAST; // على اليمين
-        gbc.insets = new Insets(75, 0, 0, 10); // 75 من فوق (ينزل)، 10 من اليمين (أقرب لليمين جداً)
+        gbc.anchor = GridBagConstraints.EAST;
+        gbc.insets = new Insets(75, 0, 0, 10);
         panel.add(formPanel, gbc);
         
         return panel;
     }
     
     private JPanel createReservationPanel() {
-        JPanel panel = new ReservationBackgroundPanel(); // استخدام panel خاص لصفحة الحجز
+        JPanel panel = new ReservationBackgroundPanel();
         panel.setLayout(new BorderLayout());
         
         // Wrapper for header to center it
@@ -188,7 +187,7 @@ public class ReservationGUI extends JFrame {
         // Header
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setBackground(new Color(139, 69, 19));
-        headerPanel.setPreferredSize(new Dimension(1100, 100)); // نفس عرض الصورة
+        headerPanel.setPreferredSize(new Dimension(1100, 100));
         headerPanel.setMaximumSize(new Dimension(1100, 100));
         
         JLabel headerLabel = new JLabel("Le Jené Spa - Book Your Treatment", SwingConstants.CENTER);
@@ -196,7 +195,7 @@ public class ReservationGUI extends JFrame {
         headerLabel.setForeground(Color.WHITE);
         headerPanel.add(headerLabel, BorderLayout.CENTER);
         
-        // Logout button on the right side of header
+        // Logout button
         JButton logoutBtn = new JButton("Logout");
         logoutBtn.setFont(new Font("Arial", Font.BOLD, 14));
         logoutBtn.setBackground(new Color(180, 90, 30));
@@ -226,13 +225,13 @@ public class ReservationGUI extends JFrame {
         headerWrapper.add(headerPanel);
         panel.add(headerWrapper, BorderLayout.NORTH);
         
-        // Main content with semi-transparent background
+        // Main content
         JPanel contentPanel = new JPanel();
         contentPanel.setLayout(new GridBagLayout());
         contentPanel.setOpaque(false);
         
         JPanel formPanel = new JPanel(new GridBagLayout());
-        formPanel.setBackground(new Color(255, 255, 255, 250)); // أكثر وضوح
+        formPanel.setBackground(new Color(255, 255, 255, 250));
         formPanel.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(new Color(139, 69, 19), 3),
             BorderFactory.createEmptyBorder(30, 40, 30, 40)
@@ -469,16 +468,11 @@ public class ReservationGUI extends JFrame {
             super.paintComponent(g);
             Graphics2D g2d = (Graphics2D) g;
             
-            // If background image is loaded, draw it normally without transparency
             if (backgroundImage != null) {
-                // حساب الموقع عشان تكون في المنتصف
                 int x = (getWidth() - 1000) / 2;
                 int y = (getHeight() - 400) / 2;
-                
-                // رسم الصورة بشكل طبيعي بدون شفافية
                 g2d.drawImage(backgroundImage, x, y, 1000, 400, null);
             } else {
-                // Create gradient background if no image (spa colors)
                 GradientPaint gradient = new GradientPaint(
                     0, 0, new Color(245, 245, 220),
                     0, getHeight(), new Color(222, 184, 135)
@@ -496,18 +490,13 @@ public class ReservationGUI extends JFrame {
             super.paintComponent(g);
             Graphics2D g2d = (Graphics2D) g;
             
-            // If reservation background image is loaded, draw it bigger than the form
             if (reservationBackgroundImage != null) {
-                // حساب الموقع عشان تكون في المنتصف - حجم أكبر من الفورم
-                int imgWidth = 1100;  // أكبر من 1000
-                int imgHeight = 700;  // أكبر من 400
+                int imgWidth = 1100;
+                int imgHeight = 700;
                 int x = (getWidth() - imgWidth) / 2;
                 int y = (getHeight() - imgHeight) / 2;
-                
-                // رسم الصورة بشكل طبيعي بدون شفافية
                 g2d.drawImage(reservationBackgroundImage, x, y, imgWidth, imgHeight, null);
             } else {
-                // Create gradient background if no image (spa colors)
                 GradientPaint gradient = new GradientPaint(
                     0, 0, new Color(245, 245, 220),
                     0, getHeight(), new Color(222, 184, 135)
